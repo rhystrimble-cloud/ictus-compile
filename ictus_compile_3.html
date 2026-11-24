@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ICTUS COMPILE 3.0 — FLARF ENGINE</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00ff9d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ICTUS">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+:root{
+  --bg:#0a0a12;
+  --panel:#1a1a2e;
+  --panel2:#12121f;
+  --bevel-light:#4a4a6a;
+  --bevel-dark:#050508;
+  --text:#c8c8e0;
+  --dim:#6a6a88;
+  --lcd:#00ff9d;
+  --lcd-dim:#00aa66;
+  --hot:#ff3c7d;
+  --gold:#ffcc00;
+  --cyan:#00e5ff;
+  --winamp-blue:#2a3a5a;
+  --winamp-hi:#3d5a8a;
+}
+
+*{box-sizing:border-box;image-rendering:pixelated}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'VT323',monospace;min-height:100vh;overflow-x:hidden}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:100;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.12) 2px,rgba(0,0,0,.12) 4px);
+  opacity:.35;
+}
+
+/* WINAMP-STYLE TITLEBAR */
+.titlebar{
+  background:linear-gradient(180deg,#3a4a6a 0%,#1e2a42 40%,#152036 100%);
+  border:2px solid;border-color:#6a7a9a #0a1020 #0a1020 #5a6a8a;
+  padding:6px 10px;display:flex;justify-content:space-between;align-items:center;
+  font-family:'Press Start 2P',monospace;font-size:10px;color:#e0e8ff;
+  text-shadow:1px 1px 0 #000;letter-spacing:1px;
+}
+.titlebar .logo span{color:var(--lcd)}
+.titlebar .ver{color:var(--gold);font-size:8px}
+.win-btns{display:flex;gap:4px}
+.win-btn{
+  width:14px;height:12px;border:1px solid;border-color:#8a9aba #101828 #101828 #6a7a9a;
+  background:linear-gradient(180deg,#4a5a7a,#2a3a5a);cursor:pointer;font-size:8px;line-height:10px;text-align:center;color:#ccc;
+}
+
+/* MAIN SHELL */
+.shell{
+  max-width:1100px;margin:12px auto;padding:0 8px 24px;
+}
+.main-panel{
+  background:var(--panel);
+  border:3px solid;border-color:var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+  box-shadow:inset 1px 1px 0 #2a2a44, 4px 4px 0 #000;
+}
+
+/* HUD / SCORE STRIP */
+.hud-strip{
+  background:linear-gradient(180deg,#0e0e18,#181828);
+  border-bottom:2px solid #000;
+  padding:8px 12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  font-family:'Press Start 2P',monospace;font-size:8px;
+}
+.lcd{
+  background:#001a12;border:2px solid;border-color:#003322 #00ff9d #00ff9d #003322;
+  color:var(--lcd);padding:4px 8px;min-width:70px;text-align:center;
+  box-shadow:inset 0 0 8px #003322;text-shadow:0 0 4px var(--lcd);
+  font-size:11px;letter-spacing:1px;
+}
+.lcd label{display:block;font-size:7px;color:var(--lcd-dim);margin-bottom:1px}
+.lcd.hot{color:var(--hot);border-color:#330015 #ff3c7d #ff3c7d #330015;text-shadow:0 0 4px var(--hot);background:#1a0010}
+.lcd.gold{color:var(--gold);border-color:#332200 #ffcc00 #ffcc00 #332200;text-shadow:0 0 4px var(--gold);background:#1a1400}
+
+/* WORKSPACE */
+.workspace{
+  display:grid;
+  grid-template-columns:minmax(200px,.85fr) minmax(320px,1.5fr) minmax(210px,.9fr);
+  gap:0;
+}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}}
+
+.col{
+  border-right:2px solid #0a0a14;
+  background:var(--panel2);
+  min-height:420px;display:flex;flex-direction:column;
+}
+.col:last-child{border-right:none}
+.col-head{
+  background:linear-gradient(180deg,#2a3a55,#1a2538);
+  border-bottom:2px solid #0a1020;
+  padding:6px 10px;font-family:'Press Start 2P',monospace;font-size:8px;
+  color:#a0b0d0;text-shadow:1px 1px 0 #000;letter-spacing:.5px;
+  display:flex;justify-content:space-between;
+}
+.col-head em{color:var(--lcd);font-style:normal}
+
+.col-body{padding:10px;flex:1;display:flex;flex-direction:column;gap:8px}
+
+.label{font-family:'Press Start 2P',monospace;font-size:7px;color:var(--dim);letter-spacing:.5px;margin-bottom:3px}
+textarea,input[type=range]{width:100%}
+textarea{
+  background:#0c0c16;border:2px solid;border-color:#000 #333 #333 #000;
+  color:var(--text);padding:8px;font:16px/1.35 'VT323',monospace;
+  resize:vertical;min-height:130px;outline:none;box-shadow:inset 2px 2px 0 #000;
+}
+textarea:focus{border-color:var(--cyan);color:#fff}
+.note{font-size:13px;color:var(--dim);line-height:1.3}
+
+/* CHUNKY BUTTONS */
+.btnrow{display:flex;flex-wrap:wrap;gap:5px}
+.btn{
+  font-family:'Press Start 2P',monospace;font-size:8px;
+  background:linear-gradient(180deg,#3a4a6a,#1e2a42);
+  border:2px solid;border-color:#6a7a9a #0a1020 #0a1020 #4a5a7a;
+  color:#d0d8f0;padding:7px 9px;cursor:pointer;
+  text-shadow:1px 1px 0 #000;transition:none;
+  box-shadow:1px 1px 0 #000;
+}
+.btn:hover{background:linear-gradient(180deg,#4a5a7a,#2a3a55);color:#fff}
+.btn:active{border-color:#0a1020 #6a7a9a #6a7a9a #0a1020;transform:translate(1px,1px);box-shadow:none}
+.btn.primary{background:linear-gradient(180deg,#00cc7a,#007744);border-color:#00ff9d #003322 #003322 #00aa66;color:#001a0e}
+.btn.primary:hover{background:linear-gradient(180deg,#00ee99,#009955)}
+.btn.hot{background:linear-gradient(180deg,#ff5a9a,#aa1040);border-color:#ff8aba #440020 #440020 #cc3060;color:#1a0010}
+.btn.hot:hover{background:linear-gradient(180deg,#ff7ab0,#cc2050)}
+.btn.ghost{background:linear-gradient(180deg,#2a2a3a,#161622);border-color:#4a4a5a #080810 #080810 #3a3a4a;color:#888}
+
+/* FIELD */
+.field-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
+.field-bar{
+  background:#0e0e18;border-bottom:1px solid #222;padding:5px 8px;
+  font-family:'Press Start 2P',monospace;font-size:7px;color:var(--dim);
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;
+}
+#field{
+  flex:1;background:#080810;border:2px solid;border-color:#000 #222 #222 #000;
+  padding:12px 14px;font:18px/1.45 'VT323',monospace;color:#d0d8f0;
+  white-space:pre-wrap;overflow-wrap:anywhere;outline:none;min-height:320px;
+  box-shadow:inset 2px 2px 6px #000;overflow-y:auto;
+}
+#field:empty:before{content:attr(data-placeholder);color:#445;font-style:normal}
+#field:focus{border-color:var(--cyan);color:#fff}
+#field.pulse{animation:glitch .25s steps(2)}
+@keyframes glitch{
+  0%{transform:translate(0);filter:none}
+  25%{transform:translate(-2px,1px);filter:hue-rotate(20deg)}
+  50%{transform:translate(2px,-1px)}
+  100%{transform:translate(0)}
+}
+
+/* OPERATORS */
+.op-list{display:grid;gap:4px}
+.op{
+  font-family:'Press Start 2P',monospace;font-size:7px;
+  background:linear-gradient(180deg,#222233,#14141f);
+  border:2px solid;border-color:#444 #111 #111 #333;
+  color:#a0a8c0;padding:7px 8px;cursor:pointer;text-align:left;
+  display:flex;justify-content:space-between;align-items:center;
+  box-shadow:1px 1px 0 #000;
+}
+.op:hover{background:linear-gradient(180deg,#2a2a44,#1a1a2e);color:#fff;border-color:#666 #111 #111 #444}
+.op:active{transform:translate(1px,1px);box-shadow:none}
+.op .ico{color:var(--hot);font-size:10px}
+.op.special{border-color:#665500 #221100 #221100 #554400;background:linear-gradient(180deg,#2a2410,#1a1608);color:var(--gold)}
+.op.special .ico{color:var(--gold)}
+.op.flarf{border-color:#660033 #220011 #220011 #550022;background:linear-gradient(180deg,#2a1020,#1a0810);color:#ff8aba}
+.op.flarf .ico{color:var(--hot)}
+.op .pts{font-size:6px;color:#555;margin-left:4px}
+
+.section{border-top:1px solid #222;padding-top:8px;margin-top:4px}
+.range{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim)}
+.range input{flex:1;accent-color:var(--hot);height:12px}
+
+/* XP */
+.xp-track{height:8px;background:#0a0a12;border:1px solid #333;margin-top:6px;position:relative}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--lcd-dim),var(--lcd));width:0%;box-shadow:0 0 6px var(--lcd);transition:width .3s}
+.xp-txt{font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-top:2px}
+
+/* FOOTER */
+.foot{
+  background:#0e0e18;border-top:2px solid #000;padding:8px 12px;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;
+  font-family:'Press Start 2P',monospace;font-size:7px;color:var(--dim);
+}
+.foot b{color:var(--lcd)}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:#001a12;border:2px solid var(--lcd);color:var(--lcd);
+  font-family:'Press Start 2P',monospace;font-size:9px;padding:10px 16px;
+  display:none;z-index:50;text-shadow:0 0 6px var(--lcd);box-shadow:0 0 20px #003322;
+  max-width:90vw;text-align:center;
+}
+.toast.level{border-color:var(--gold);color:var(--gold);text-shadow:0 0 6px var(--gold);background:#1a1400}
+.toast.flarf{border-color:var(--hot);color:var(--hot);text-shadow:0 0 6px var(--hot);background:#1a0010}
+
+/* FLOAT SCORE */
+.float-pts{
+  position:fixed;pointer-events:none;font-family:'Press Start 2P',monospace;
+  font-size:10px;color:var(--lcd);z-index:60;text-shadow:0 0 4px #000;
+  animation:floatUp .9s ease-out forwards;
+}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-40px)}}
+
+.level-badge{
+  position:absolute;top:4px;right:8px;background:var(--gold);color:#000;
+  font-family:'Press Start 2P',monospace;font-size:7px;padding:3px 6px;
+  border:2px solid #000;display:none;z-index:5;
+}
+.level-badge.show{display:block;animation:pop .3s steps(2)}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- TITLEBAR -->
+  <div class="titlebar">
+    <div class="logo">ICTUS <span>COMPILE</span> <span class="ver">v3.0</span></div>
+    <div class="win-btns">
+      <div class="win-btn">_</div>
+      <div class="win-btn">□</div>
+      <div class="win-btn">×</div>
+    </div>
+  </div>
+
+  <div class="main-panel">
+    <!-- HUD -->
+    <div class="hud-strip">
+      <div class="lcd"><label>SCORE</label><span id="score">0</span></div>
+      <div class="lcd gold"><label>LVL</label><span id="level">1</span></div>
+      <div class="lcd hot"><label>COMBO</label><span id="combo">0</span></div>
+      <div class="lcd"><label>OPS</label><span id="ops">0</span></div>
+      <div style="flex:1"></div>
+      <div class="lcd" style="min-width:120px"><label>STATUS</label><span id="status">READY</span></div>
+    </div>
+
+    <div class="workspace">
+      <!-- MATERIAL -->
+      <div class="col">
+        <div class="col-head"><span>01 MATERIAL</span><em>SRC</em></div>
+        <div class="col-body">
+          <div class="label">SOURCE BUFFER</div>
+          <textarea id="source" spellcheck="false">the night folds its map
+inside the listening room
+small machines dream in Welsh
+and the rain keeps changing channels
+I carry a pocket of static
+through the unlit streets</textarea>
+          <div class="note">LOCAL BUFFER · PULL FROM NET BELOW</div>
+
+          <div class="section">
+            <div class="label">NET INGEST</div>
+            <div class="btnrow">
+              <button class="btn ghost" id="fetchAdvice">+ADVICE</button>
+              <button class="btn ghost" id="fetchQuote">+QUOTE</button>
+            </div>
+            <div class="note" id="ingestStatus" style="min-height:14px"></div>
+          </div>
+
+          <div class="btnrow" style="margin-top:auto">
+            <button class="btn primary" id="fragmentize">FRAG ↯</button>
+            <button class="btn" id="toField">→ FIELD</button>
+          </div>
+          <div class="xp-track"><div class="xp-fill" id="xpFill"></div></div>
+          <div class="xp-txt"><span>XP</span><span id="xpText">0 / 100</span></div>
+        </div>
+      </div>
+
+      <!-- FIELD -->
+      <div class="col" style="position:relative">
+        <div class="col-head"><span>02 OPEN FIELD</span><em id="fieldStatus">EDIT</em></div>
+        <div class="level-badge" id="levelBadge">LVL UP!</div>
+        <div class="field-wrap">
+          <div class="field-bar">
+            <span id="meter">0 LINES · 0 WORDS</span>
+            <span>SELECT → BLACKOUT</span>
+          </div>
+          <div id="field" contenteditable="true" spellcheck="false" data-placeholder="DROP FRAGMENTS HERE · CHAIN OPERATORS · FLARF HARD"></div>
+        </div>
+      </div>
+
+      <!-- OPS -->
+      <div class="col">
+        <div class="col-head"><span>03 OPERATORS</span><em>PROC</em></div>
+        <div class="col-body">
+          <div class="label">CHANCE / FRAG</div>
+          <div class="op-list">
+            <button class="op" data-op="shuffle" data-pts="8">SHUFFLE <span class="ico">↯</span><span class="pts">+8</span></button>
+            <button class="op" data-op="refrag" data-pts="10">REFRAG <span class="ico">✂</span><span class="pts">+10</span></button>
+            <button class="op" data-op="echo" data-pts="6">ECHO <span class="ico">≋</span><span class="pts">+6</span></button>
+            <button class="op" data-op="cutup" data-pts="9">CUT-UP <span class="ico">▦</span><span class="pts">+9</span></button>
+            <button class="op special" data-op="markov" data-pts="18">MARKOV <span class="ico">⛓</span><span class="pts">+18</span></button>
+            <button class="op flarf" data-op="flarf" data-pts="25">FLARFIFY <span class="ico">💥</span><span class="pts">+25</span></button>
+          </div>
+
+          <div class="section">
+            <div class="label">ERASURE</div>
+            <div class="op-list">
+              <button class="op" data-op="erase" data-pts="12">DENSITY ERASE <span class="ico">⌁</span><span class="pts">+12</span></button>
+              <button class="op" data-op="blackout" data-pts="14">BLACKOUT <span class="ico">■</span><span class="pts">+14</span></button>
+              <button class="op" data-op="reveal" data-pts="5">REVEAL <span class="ico">○</span><span class="pts">+5</span></button>
+            </div>
+            <div class="range" style="margin-top:6px">
+              <input id="density" type="range" min="15" max="90" value="45">
+              <span id="densityVal">45%</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="label">SYNTAX</div>
+            <div class="op-list">
+              <button class="op" data-op="reverse" data-pts="7">REVERSE <span class="ico">↶</span><span class="pts">+7</span></button>
+              <button class="op" data-op="invert" data-pts="8">INVERT <span class="ico">⇄</span><span class="pts">+8</span></button>
+              <button class="op" data-op="strip" data-pts="11">STRIP <span class="ico">—</span><span class="pts">+11</span></button>
+              <button class="op" data-op="particle" data-pts="9">PARTICLES <span class="ico">+</span><span class="pts">+9</span></button>
+              <button class="op" data-op="rotate" data-pts="6">ROTATE <span class="ico">⟳</span><span class="pts">+6</span></button>
+            </div>
+          </div>
+
+          <div class="btnrow" style="margin-top:auto">
+            <button class="btn" id="undo">UNDO</button>
+            <button class="btn hot" id="reset">RESET</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="foot">
+      <span>ICTUS COMPILE <b>3.0</b> · FLARF ENGINE</span>
+      <div class="btnrow">
+        <button class="btn" id="copy">COPY</button>
+        <button class="btn" id="download">EXPORT.TXT</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">READY</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let history = [];
+const originalSource = $('source').value;
+
+// GAME STATE
+let score = 0, level = 1, combo = 0, ops = 0, xp = 0;
+const xpNeeded = () => 80 + level * 40;
+let lastOpTime = 0;
+const COMBO_WINDOW = 4000;
+
+function updateHUD(){
+  $('score').textContent = score;
+  $('level').textContent = level;
+  $('combo').textContent = combo;
+  $('ops').textContent = ops;
+  const need = xpNeeded();
+  $('xpFill').style.width = Math.min(100, (xp/need)*100) + '%';
+  $('xpText').textContent = xp + ' / ' + need;
+}
+
+function addScore(basePts, x, y){
+  const now = Date.now();
+  if(now - lastOpTime < COMBO_WINDOW) combo++;
+  else combo = 1;
+  lastOpTime = now;
+  const mult = 1 + Math.min(combo-1, 8) * 0.18;
+  const gained = Math.round(basePts * mult);
+  score += gained; xp += gained; ops++;
+
+  const el = document.createElement('div');
+  el.className = 'float-pts';
+  el.textContent = '+' + gained + (combo>1 ? ' x'+combo : '');
+  el.style.left = (x ?? innerWidth/2-30) + 'px';
+  el.style.top = (y ?? innerHeight-90) + 'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 900);
+
+  while(xp >= xpNeeded()){
+    xp -= xpNeeded();
+    level++;
+    notify('LEVEL ' + level + ' !!', 'level');
+    const b = $('levelBadge');
+    b.classList.add('show');
+    setTimeout(()=>b.classList.remove('show'), 2000);
+  }
+  updateHUD();
+}
+
+function notify(msg, type){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' '+type : '');
+  t.style.display = 'block';
+  clearTimeout(window._t);
+  window._t = setTimeout(()=>t.style.display='none', type==='level'||type==='flarf' ? 2200 : 1400);
+}
+
+function snapshot(){ history.push($('field').innerText); if(history.length>40) history.shift(); }
+function getText(){ return $('field').innerText.replace(/\r/g,'').trim(); }
+function setText(txt, st){
+  $('field').innerText = txt;
+  $('field').classList.remove('pulse'); void $('field').offsetWidth; $('field').classList.add('pulse');
+  updateMeter();
+  if(st){ $('status').textContent = st; $('fieldStatus').textContent = st; }
+}
+function updateMeter(){
+  const t = getText();
+  const w = t ? t.split(/\s+/).filter(Boolean).length : 0;
+  const l = t ? t.split(/\n+/).filter(x=>x.trim()).length : 0;
+  $('meter').textContent = l + ' LINES · ' + w + ' WORDS';
+}
+function lines(){ return getText().split(/\n/).map(l=>l.trim()).filter(Boolean); }
+function wordsFrom(s){ return s.split(/\s+/).filter(Boolean); }
+
+// MARKOV
+function buildMarkov(words, order=1){
+  const map = {};
+  for(let i=0;i<words.length-order;i++){
+    const key = words.slice(i,i+order).join(' ');
+    const next = words[i+order];
+    if(!map[key]) map[key]=[];
+    map[key].push(next);
+  }
+  return map;
+}
+function generateMarkov(words, length, order=1){
+  if(words.length < order+1) return words.join(' ');
+  const map = buildMarkov(words, order);
+  const keys = Object.keys(map);
+  if(!keys.length) return words.join(' ');
+  let current = keys[Math.floor(Math.random()*keys.length)];
+  const result = current.split(' ');
+  for(let i=0;i<length-order;i++){
+    const opts = map[current];
+    if(!opts||!opts.length){ current = keys[Math.floor(Math.random()*keys.length)]; result.push(...current.split(' ')); continue; }
+    const next = opts[Math.floor(Math.random()*opts.length)];
+    result.push(next);
+    const parts = current.split(' '); parts.shift(); parts.push(next); current = parts.join(' ');
+  }
+  return result.join(' ');
+}
+function markovReorder(){
+  const cur = getText() || $('source').value.trim();
+  if(!cur){ notify('NEED TEXT'); return null; }
+  const words = wordsFrom(cur.replace(/\n+/g,' '));
+  if(words.length<6){ notify('NEED MORE WORDS'); return null; }
+  const order = words.length>40 && Math.random()<0.4 ? 2 : 1;
+  const len = Math.max(12, Math.min(words.length + Math.floor(Math.random()*10), 90));
+  let gen = generateMarkov(words, len, order);
+  const ws = gen.split(/\s+/); const nl=[]; let b=[];
+  ws.forEach(w=>{ b.push(w); if(b.length>=5+Math.floor(Math.random()*5)){ nl.push(b.join(' ')); b=[]; }});
+  if(b.length) nl.push(b.join(' '));
+  return nl.join('\n');
+}
+
+// FLARFIFY — aggressive, spammy, internet-junk remix
+function flarfify(){
+  const cur = getText() || $('source').value.trim();
+  if(!cur){ notify('NEED TEXT TO FLARF'); return null; }
+  let words = wordsFrom(cur.replace(/\n+/g,' '));
+  if(words.length < 4){ notify('TOO THIN'); return null; }
+
+  // Flarf particle bank (classic flarf energy)
+  const junk = [
+    'OMG','LOL','WTF','BUY NOW','CLICK HERE','FREE','!!!','???','AS SEEN ON',
+    'you won\'t believe','hot singles','in your area','limited time',
+    'CONGRATULATIONS','dear friend','make money','fast','URGENT',
+    'spam','delete this','fwd:','RE:','!!!1','lmao','based','ratio',
+    'no thoughts','head empty',' chronical ',' vibes ',' core',
+    'the algorithm','engagement','slay','queen','king','periodt',
+    'GOOGLE SAYS','according to sources','BREAKING','just in',
+    '🔥','💯','😂','💀','✨','🚀','⚠️'
+  ];
+  const intensifiers = ['so','very','really','extremely','totally','literally','actually','basically'];
+  const connectors = ['and then','but also','meanwhile','btw','also','plus','or whatever','idk'];
+
+  // Aggressive remix
+  const out = [];
+  let i = 0;
+  while(i < words.length){
+    // sometimes inject junk burst
+    if(Math.random() < 0.18){
+      const burst = [];
+      const n = 1 + Math.floor(Math.random()*3);
+      for(let k=0;k<n;k++) burst.push(junk[Math.floor(Math.random()*junk.length)]);
+      out.push(burst.join(' '));
+    }
+    // take 1-4 source words
+    const take = 1 + Math.floor(Math.random()*3);
+    let chunk = words.slice(i, i+take);
+    // random ALL CAPS
+    if(Math.random() < 0.22) chunk = chunk.map(w => w.toUpperCase());
+    // random intensifier
+    if(Math.random() < 0.12 && chunk.length) chunk.unshift(intensifiers[Math.floor(Math.random()*intensifiers.length)]);
+    out.push(chunk.join(' '));
+    i += take;
+    // occasional connector
+    if(Math.random() < 0.15) out.push(connectors[Math.floor(Math.random()*connectors.length)]);
+  }
+
+  // shuffle some blocks
+  for(let j=0;j<Math.floor(out.length*0.3);j++){
+    const a = Math.floor(Math.random()*out.length);
+    const b = Math.floor(Math.random()*out.length);
+    [out[a],out[b]] = [out[b],out[a]];
+  }
+
+  // line breaks + occasional scream lines
+  const lines = [];
+  let buf = [];
+  out.forEach((frag, idx) => {
+    buf.push(frag);
+    if(buf.length >= 2 + Math.floor(Math.random()*3) || Math.random()<0.25){
+      let line = buf.join(' ');
+      if(Math.random() < 0.12) line = line.toUpperCase() + '!!!';
+      lines.push(line);
+      buf = [];
+    }
+  });
+  if(buf.length) lines.push(buf.join(' '));
+
+  // final chaos: sometimes duplicate a line and scream it
+  if(lines.length > 2 && Math.random() < 0.4){
+    const scream = lines[Math.floor(Math.random()*lines.length)].toUpperCase();
+    lines.splice(Math.floor(Math.random()*lines.length), 0, scream + ' ' + scream);
+  }
+
+  return lines.join('\n');
+}
+
+// INGEST
+async function fetchAdvice(){
+  $('ingestStatus').textContent = 'FETCHING...';
+  try{
+    const r = await fetch('https://api.adviceslip.com/advice');
+    const j = await r.json();
+    appendSource(j.slip.advice);
+    $('ingestStatus').textContent = 'ADVICE LOADED';
+    addScore(15); notify('ADVICE +15');
+  }catch(e){ $('ingestStatus').textContent = 'FAIL'; notify('FETCH FAIL'); }
+}
+async function fetchQuote(){
+  $('ingestStatus').textContent = 'FETCHING...';
+  try{
+    let text = null;
+    try{
+      const r = await fetch('https://api.quotable.io/random');
+      if(r.ok){ const j = await r.json(); text = j.content + (j.author?' — '+j.author:''); }
+    }catch(_){}
+    if(!text){
+      const r2 = await fetch('https://api.adviceslip.com/advice');
+      const j2 = await r2.json(); text = j2.slip.advice;
+    }
+    appendSource(text);
+    $('ingestStatus').textContent = 'TEXT LOADED';
+    addScore(15); notify('INGEST +15');
+  }catch(e){ $('ingestStatus').textContent = 'FAIL'; notify('FETCH FAIL'); }
+}
+function appendSource(txt){
+  const cur = $('source').value.trim();
+  $('source').value = cur ? cur + '\n' + txt : txt;
+}
+
+// CORE
+function fragmentize(){
+  snapshot();
+  const raw = $('source').value.trim();
+  if(!raw){ notify('EMPTY BUFFER'); return; }
+  const allWords = wordsFrom(raw.replace(/\n+/g,' '));
+  const frags = []; let i=0;
+  while(i<allWords.length){
+    const len = 1+Math.floor(Math.random()*4);
+    frags.push(allWords.slice(i,i+len).join(' '));
+    i+=len;
+  }
+  const linesOut=[]; let buf=[];
+  frags.forEach(f=>{
+    buf.push(f);
+    if(buf.length>=1+Math.floor(Math.random()*2)||Math.random()<0.35){
+      linesOut.push(buf.join('  ·  ')); buf=[];
+    }
+  });
+  if(buf.length) linesOut.push(buf.join('  ·  '));
+  setText(linesOut.join('\n'), 'FRAG');
+  addScore(12); notify('FRAGMENTED +12');
+}
+function sendToField(){
+  snapshot();
+  const raw = $('source').value.trim();
+  if(!raw){ notify('EMPTY'); return; }
+  setText(raw, 'LOAD');
+  addScore(5); notify('LOADED +5');
+}
+
+function apply(op, pts, ev){
+  const cur = getText();
+  if(!cur && op!=='reveal' && op!=='markov' && op!=='flarf'){
+    if($('source').value.trim()) fragmentize();
+    else { notify('NOTHING'); return; }
+  }
+  snapshot();
+  const dens = +$('density').value/100;
+  let out = cur;
+  const ls = lines();
+
+  switch(op){
+    case 'shuffle':{
+      const flat = wordsFrom(cur||$('source').value);
+      for(let i=flat.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [flat[i],flat[j]]=[flat[j],flat[i]]; }
+      const nl=[]; let b=[];
+      flat.forEach(w=>{ b.push(w); if(b.length>=3+Math.floor(Math.random()*4)||Math.random()<0.2){ nl.push(b.join(' ')); b=[]; }});
+      if(b.length) nl.push(b.join(' '));
+      out = nl.join('\n'); break;
+    }
+    case 'refrag':{
+      const flat = wordsFrom(cur||$('source').value);
+      const frags=[]; let i=0;
+      while(i<flat.length){ const len=1+Math.floor(Math.random()*3); frags.push(flat.slice(i,i+len).join(' ')); i+=len; }
+      out = frags.join('  ·  ').split(' · ').reduce((acc,f,idx)=>{
+        if(idx && idx%3===0) acc+='\n'; else if(idx) acc+=' · ';
+        return acc+f;
+      },''); break;
+    }
+    case 'echo': out = ls.map(l=>Math.random()<dens?l+'\n'+l:l).join('\n'); break;
+    case 'cutup': out = ls.map(l=>wordsFrom(l).sort(()=>Math.random()-0.5).join(' ')).join('\n'); break;
+    case 'markov':{
+      const m = markovReorder(); if(m===null) return; out = m; break;
+    }
+    case 'flarf':{
+      const f = flarfify(); if(f===null) return; out = f; break;
+    }
+    case 'erase':{
+      out = ls.map(l=>wordsFrom(l).map(w=>Math.random()>dens?'…':w).join(' ').replace(/(…\s*){2,}/g,'… '))
+        .filter(l=>l.replace(/[…\s]/g,'').length>0).join('\n'); break;
+    }
+    case 'blackout':{
+      const sel = window.getSelection();
+      if(sel && sel.rangeCount && $('field').contains(sel.anchorNode)){
+        const range = sel.getRangeAt(0);
+        const selected = range.toString();
+        if(selected.trim()){
+          const black = '█'.repeat(Math.max(1,Math.ceil(selected.length*0.7)));
+          range.deleteContents(); range.insertNode(document.createTextNode(black));
+          updateMeter(); $('status').textContent='BLACKOUT';
+          const rect = range.getBoundingClientRect();
+          addScore(pts, rect.left||null, rect.top||null);
+          notify('BLACKOUT +'+pts); return;
+        }
+      }
+      out = wordsFrom(cur).map(w=>Math.random()>dens?'█'.repeat(Math.min(w.length,4)):w).join(' ');
+      const ws=out.split(/\s+/); const nl=[]; let b=[];
+      ws.forEach(w=>{b.push(w);if(b.length>6+Math.random()*4){nl.push(b.join(' '));b=[]}});
+      if(b.length) nl.push(b.join(' ')); out=nl.join('\n'); break;
+    }
+    case 'reveal':
+      out = cur.replace(/█+/g,'').replace(/\s*…\s*/g,' ').replace(/\s{2,}/g,' ').trim()
+        .split(/\n/).map(l=>l.trim()).filter(Boolean).join('\n'); break;
+    case 'reverse':{
+      out = wordsFrom(cur).reverse().join(' ');
+      const ws=out.split(/\s+/); const nl=[]; let b=[];
+      ws.forEach(w=>{b.push(w);if(b.length>7){nl.push(b.join(' '));b=[]}});
+      if(b.length) nl.push(b.join(' ')); out=nl.join('\n'); break;
+    }
+    case 'invert': out = ls.map(l=>wordsFrom(l).reverse().join(' ')).join('\n'); break;
+    case 'strip':{
+      const stop=new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','as','is','are','was','were','be','been','being','that','this','these','those','it','its','i','you','he','she','we','they','my','your','his','her','our','their']);
+      out = ls.map(l=>wordsFrom(l).filter(w=>!stop.has(w.toLowerCase())).join(' ')||'…').join('\n'); break;
+    }
+    case 'particle':{
+      const particles=['&','—','or','yet','so','still','now','then','here','there','almost','already'];
+      out = ls.map(l=>{
+        const ws=wordsFrom(l); if(ws.length<2) return l;
+        const pos=1+Math.floor(Math.random()*(ws.length-1));
+        ws.splice(pos,0,particles[Math.floor(Math.random()*particles.length)]);
+        return ws.join(' ');
+      }).join('\n'); break;
+    }
+    case 'rotate':{
+      if(ls.length<2){ notify('NEED LINES'); return; }
+      const last=ls.pop(); ls.unshift(last); out=ls.join('\n'); break;
+    }
+  }
+
+  setText(out, op.toUpperCase());
+  const x = ev ? ev.clientX : null;
+  const y = ev ? ev.clientY : null;
+  addScore(pts, x, y);
+  const finalPts = Math.round(pts * (1 + Math.min(combo-1,8)*0.18));
+  notify(op.toUpperCase() + ' +' + finalPts, op==='flarf' ? 'flarf' : null);
+}
+
+// WIRE
+$('fragmentize').onclick = fragmentize;
+$('toField').onclick = sendToField;
+$('fetchAdvice').onclick = fetchAdvice;
+$('fetchQuote').onclick = fetchQuote;
+$('density').oninput = () => $('densityVal').textContent = $('density').value + '%';
+
+document.querySelectorAll('[data-op]').forEach(b => {
+  b.onclick = (ev) => apply(b.dataset.op, +b.dataset.pts||8, ev);
+});
+
+$('undo').onclick = () => {
+  if(history.length){ setText(history.pop(), 'UNDO'); notify('UNDO'); }
+  else notify('NO UNDO');
+};
+$('reset').onclick = () => {
+  snapshot(); $('source').value = originalSource; setText('', 'RESET');
+  $('ingestStatus').textContent=''; combo=0; updateHUD(); notify('RESET');
+};
+$('copy').onclick = async () => {
+  const t=getText(); if(!t){ notify('EMPTY'); return; }
+  try{ await navigator.clipboard.writeText(t); addScore(4); notify('COPIED +4'); }
+  catch(e){ const a=document.createElement('textarea'); a.value=t; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); addScore(4); notify('COPIED +4'); }
+};
+$('download').onclick = () => {
+  const t=getText(); if(!t){ notify('EMPTY'); return; }
+  const blob=new Blob([t],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download='ictus-compile-3-flarf.txt'; a.click(); URL.revokeObjectURL(url);
+  addScore(6); notify('EXPORT +6');
+};
+
+$('field').addEventListener('input', updateMeter);
+updateMeter(); updateHUD();
+
+// ——— PWA SERVICE WORKER ———
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('ICTUS SW registered', reg.scope))
+      .catch(err => console.warn('SW registration failed', err));
+  });
+}
+</script>
+</body>
+</html>
